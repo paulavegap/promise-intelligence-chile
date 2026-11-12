@@ -1,0 +1,45 @@
+
+name: Monitoreo Promesas IKEA vs Falabella
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 10-15 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  monitoreo:
+    runs-on: ubuntu-latest
+    env:
+      TZ: America/Santiago
+
+    steps:
+      - name: Validar horario de Chile
+        id: horario
+        run: |
+          HORA=$(TZ=America/Santiago date +%H)
+          if [[ "$HORA" == "07" || "$HORA" == "09" || "$HORA" == "11" ]]; then
+            echo "ejecutar=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ejecutar=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Descargar repositorio
+        if: steps.horario.outputs.ejecutar == 'true' || github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        if: steps.horario.outputs.ejecutar == 'true' || github.event_name == 'workflow_dispatch'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        if: steps.horario.outputs.ejecutar == 'true' || github.event_name == 'workflow_dispatch'
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar monitoreo
+        if: steps.horario.outputs.ejecutar == 'true' || github.event_name == 'workflow_dispatch'
+        run: python monitor.py
